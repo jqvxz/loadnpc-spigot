@@ -6,7 +6,7 @@
 
     <groupId>com.loadnpc</groupId>
     <artifactId>LoadNPC</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.2</version>
     <packaging>jar</packaging>
 
     <name>LoadNPC</name>
@@ -35,7 +35,7 @@
 
     <build>
         <defaultGoal>clean package</defaultGoal>
-        <finalName>${project.name}-${project.version}</finalName>
+        <finalName>loadnpc-${project.version}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
