@@ -1,0 +1,58 @@
+# LoadNPC Configuration
+
+# ─────────────────────────────────────────────
+#  Chunk Loading
+# ─────────────────────────────────────────────
+
+# How many chunks around the NPC to keep loaded (radius).
+# A value of 2 loads a 5x5 area (25 chunks) similar to a low view-distance player.
+chunk-radius: 2
+
+# ─────────────────────────────────────────────
+#  Access Control
+# ─────────────────────────────────────────────
+
+# Set to true to use config-based access control below instead of Bukkit permissions.
+# When false, standard permissions (loadnpc.spawn, loadnpc.kill, etc.) are used.
+use-config-access: false
+
+# Default max NPCs for any player not listed in the 'players' section.
+# Only used when use-config-access is true.
+# Set to 0 to block unlisted players entirely.
+default-max-npcs: 0
+
+# Per-player settings (only used when use-config-access is true).
+# Each entry defines what a player is allowed to do and how many NPCs they can spawn.
+#
+# Options per player:
+#   max-npcs:          Maximum NPCs this player can spawn (required)
+#   can-kill-others:   Can this player kill NPCs from other players? (default: false)
+#   can-list-all:      Can this player see all NPCs with /loadnpc list all? (default: false)
+#
+# Example:
+#   players:
+#     Steve:
+#       max-npcs: 5
+#       can-kill-others: true
+#       can-list-all: true
+#     Alex:
+#       max-npcs: 2
+#     Notch:
+#       max-npcs: 10
+#       can-kill-others: true
+#       can-list-all: true
+players: {}
+
+# ─────────────────────────────────────────────
+#  Messages (supports & color codes)
+# ─────────────────────────────────────────────
+messages:
+  npc-spawned: "&aChunk-loading NPC &f#%id% &aspawned! &7(Time: %time%)"
+  npc-killed: "&cNPC &f#%id% &cremoved and chunks released."
+  not-looking-at-npc: "&eYou must be looking at a LoadNPC armor stand."
+  no-permission-kill-others: "&cYou cannot kill NPCs owned by other players."
+  max-npcs-reached: "&cYou have reached the maximum number of NPCs (%max%)."
+  no-permission: "&cYou do not have permission to do this."
+  not-allowed: "&cYou are not allowed to use LoadNPC. Contact an admin."
+  need-multiple-permission: "&cYou need the &floadnpc.spawn.multiple &cpermission to spawn more than one NPC."
+  invalid-duration: "&cInvalid time format. Use e.g. &f10m&c, &f1h&c, &f2h30m&c, &f90s"

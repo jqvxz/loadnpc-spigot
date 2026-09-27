@@ -1,0 +1,28 @@
+name: LoadNPC
+version: '${project.version}'
+main: com.loadnpc.LoadNPCPlugin
+api-version: '26.2'
+description: Spawn chunk-loading ArmorStand NPCs with timers and IDs
+
+commands:
+  loadnpc:
+    description: Manage chunk-loading NPCs
+    usage: /<command> <spawn|kill|list|id>
+    aliases: [load-npc]
+
+permissions:
+  loadnpc.spawn:
+    description: Allows spawning a single chunk-loading NPC
+    default: op
+  loadnpc.spawn.multiple:
+    description: Allows spawning more than one NPC (up to the config limit)
+    default: op
+  loadnpc.kill:
+    description: Allows killing your own NPC
+    default: op
+  loadnpc.killothers:
+    description: Allows killing NPCs created by other players
+    default: op
+  loadnpc.list.all:
+    description: Allows listing all NPCs from all players
+    default: op
