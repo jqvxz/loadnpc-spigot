@@ -87,6 +87,17 @@ public class LoadNPCCommand implements CommandExecutor, TabCompleter {
         return player.hasPermission("loadnpc.spawn.multiple");
     }
 
+    private boolean canReload(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            return true;
+        }
+        if (useConfigAccess()) {
+            ConfigurationSection sec = getPlayerSection(player);
+            return (sec != null && sec.getBoolean("can-reload", false)) || player.isOp();
+        }
+        return player.hasPermission("loadnpc.reload");
+    }
+
     private int getMaxNPCs(Player player) {
         if (useConfigAccess()) {
             ConfigurationSection sec = getPlayerSection(player);
@@ -98,8 +109,13 @@ public class LoadNPCCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
+            handleReload(sender);
+            return true;
+        }
+
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+            sender.sendMessage(ChatColor.RED + "This command can only be used by players (except: /" + label + " reload).");
             return true;
         }
 
@@ -122,6 +138,17 @@ public class LoadNPCCommand implements CommandExecutor, TabCompleter {
         }
 
         return true;
+    }
+
+    private void handleReload(CommandSender sender) {
+        if (!canReload(sender)) {
+            sender.sendMessage(msg("no-permission"));
+            return;
+        }
+
+        plugin.reloadConfig();
+        npcManager.reloadConfig();
+        sender.sendMessage(msg("config-reloaded", "&aLoadNPC configuration reloaded successfully."));
     }
 
     private void handleSpawn(Player player, String[] args) {
@@ -301,24 +328,35 @@ public class LoadNPCCommand implements CommandExecutor, TabCompleter {
     }
 
     private String msg(String key) {
-        String raw = plugin.getConfig().getString("messages." + key, "&7Unknown message.");
+        return msg(key, "&7Unknown message.");
+    }
+
+    private String msg(String key, String defaultMessage) {
+        String raw = plugin.getConfig().getString("messages." + key, defaultMessage);
         return ChatColor.translateAlternateColorCodes('&', raw);
     }
 
-    private void sendUsage(Player player) {
-        player.sendMessage(ChatColor.GOLD + "══ LoadNPC Commands ══");
-        player.sendMessage(ChatColor.YELLOW + "  /loadnpc spawn [time]" + ChatColor.GRAY + " — Spawn NPC (e.g. 10m, 1h, 2h30m)");
-        player.sendMessage(ChatColor.YELLOW + "  /loadnpc kill [id]" + ChatColor.GRAY + " — Kill NPC by ID or by looking at it");
-        player.sendMessage(ChatColor.YELLOW + "  /loadnpc list" + ChatColor.GRAY + " — List your NPCs");
-        player.sendMessage(ChatColor.YELLOW + "  /loadnpc list all" + ChatColor.GRAY + " — List all NPCs");
-        player.sendMessage(ChatColor.YELLOW + "  /loadnpc id" + ChatColor.GRAY + " — Get the ID of the NPC you're looking at");
+    private void sendUsage(CommandSender sender) {
+        sender.sendMessage(ChatColor.GOLD + "══ LoadNPC Commands ══");
+        sender.sendMessage(ChatColor.YELLOW + "  /loadnpc spawn [time]" + ChatColor.GRAY + " — Spawn NPC (e.g. 10m, 1h, 2h30m)");
+        sender.sendMessage(ChatColor.YELLOW + "  /loadnpc kill [id]" + ChatColor.GRAY + " — Kill NPC by ID or by looking at it");
+        sender.sendMessage(ChatColor.YELLOW + "  /loadnpc list" + ChatColor.GRAY + " — List your NPCs");
+        sender.sendMessage(ChatColor.YELLOW + "  /loadnpc list all" + ChatColor.GRAY + " — List all NPCs");
+        sender.sendMessage(ChatColor.YELLOW + "  /loadnpc id" + ChatColor.GRAY + " — Get the ID of the NPC you're looking at");
+        if (canReload(sender)) {
+            sender.sendMessage(ChatColor.YELLOW + "  /loadnpc reload" + ChatColor.GRAY + " — Reload configuration");
+        }
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             String input = args[0].toLowerCase();
-            return List.of("spawn", "kill", "list", "id").stream()
+            List<String> subcommands = new ArrayList<>(List.of("spawn", "kill", "list", "id"));
+            if (canReload(sender)) {
+                subcommands.add("reload");
+            }
+            return subcommands.stream()
                     .filter(s -> s.startsWith(input))
                     .toList();
         }

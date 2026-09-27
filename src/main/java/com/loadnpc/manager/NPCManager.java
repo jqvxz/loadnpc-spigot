@@ -24,8 +24,8 @@ public class NPCManager {
     private static final String DATA_FILE = "npcs.yml";
 
     private final LoadNPCPlugin plugin;
-    private final int chunkRadius;
-    private final int maxNPCsPerPlayer;
+    private int chunkRadius;
+    private int maxNPCsPerPlayer;
 
     private final Map<UUID, NPCData> activeNPCs = new ConcurrentHashMap<>();
     private final Map<Integer, UUID> idToEntity = new ConcurrentHashMap<>();
@@ -35,6 +35,19 @@ public class NPCManager {
         this.plugin = plugin;
         this.chunkRadius = plugin.getConfig().getInt("chunk-radius", 2);
         this.maxNPCsPerPlayer = plugin.getConfig().getInt("max-npcs-per-player", 3);
+    }
+
+    public void reloadConfig() {
+        int oldRadius = this.chunkRadius;
+        this.chunkRadius = plugin.getConfig().getInt("chunk-radius", 2);
+        this.maxNPCsPerPlayer = plugin.getConfig().getInt("max-npcs-per-player", 3);
+
+        if (oldRadius != this.chunkRadius) {
+            releaseAllChunkTickets();
+            for (NPCData data : activeNPCs.values()) {
+                applyChunkTickets(data);
+            }
+        }
     }
 
     public void startTickTask() {

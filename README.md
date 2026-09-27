@@ -19,6 +19,7 @@ A lightweight Spigot plugin that spawns armor stand NPCs which keep chunks loade
 | `/loadnpc list` | List your NPCs |
 | `/loadnpc list all` | List all NPCs |
 | `/loadnpc id` | Get the ID of the NPC you're looking at |
+| `/loadnpc reload` | Reload the configuration (alias: `/load-npc reload`) |
 
 ## Installation
 
@@ -57,6 +58,7 @@ players:
     max-npcs: 5
     can-kill-others: true
     can-list-all: true
+    can-reload: true
   Alex:
     max-npcs: 2
 ```

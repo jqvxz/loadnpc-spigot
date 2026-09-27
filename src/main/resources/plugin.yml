@@ -7,7 +7,7 @@ description: Spawn chunk-loading ArmorStand NPCs with timers and IDs
 commands:
   loadnpc:
     description: Manage chunk-loading NPCs
-    usage: /<command> <spawn|kill|list|id>
+    usage: /<command> <spawn|kill|list|id|reload>
     aliases: [load-npc]
 
 permissions:
@@ -25,4 +25,7 @@ permissions:
     default: op
   loadnpc.list.all:
     description: Allows listing all NPCs from all players
+    default: op
+  loadnpc.reload:
+    description: Allows reloading the configuration
     default: op

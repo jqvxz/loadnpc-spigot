@@ -28,6 +28,7 @@ default-max-npcs: 0
 #   max-npcs:          Maximum NPCs this player can spawn (required)
 #   can-kill-others:   Can this player kill NPCs from other players? (default: false)
 #   can-list-all:      Can this player see all NPCs with /loadnpc list all? (default: false)
+#   can-reload:        Can this player reload the plugin config with /loadnpc reload? (default: false)
 #
 # Example:
 #   players:
@@ -35,12 +36,14 @@ default-max-npcs: 0
 #       max-npcs: 5
 #       can-kill-others: true
 #       can-list-all: true
+#       can-reload: true
 #     Alex:
 #       max-npcs: 2
 #     Notch:
 #       max-npcs: 10
 #       can-kill-others: true
 #       can-list-all: true
+#       can-reload: true
 players: {}
 
 # ─────────────────────────────────────────────
@@ -56,3 +59,4 @@ messages:
   not-allowed: "&cYou are not allowed to use LoadNPC. Contact an admin."
   need-multiple-permission: "&cYou need the &floadnpc.spawn.multiple &cpermission to spawn more than one NPC."
   invalid-duration: "&cInvalid time format. Use e.g. &f10m&c, &f1h&c, &f2h30m&c, &f90s"
+  config-reloaded: "&aLoadNPC configuration reloaded successfully."
