@@ -1,28 +1,60 @@
-# LoadNPC Configuration
+# -----------------------------------------------------------------------------
+#  LoadNPC Configuration
+# -----------------------------------------------------------------------------
 
-# ─────────────────────────────────────────────
-#  Chunk Loading
-# ─────────────────────────────────────────────
+# ---------------------------------------------
+#  Chunk Loading & Limits
+# ---------------------------------------------
 
 # How many chunks around the NPC to keep loaded (radius).
-# A value of 2 loads a 5x5 area (25 chunks) similar to a low view-distance player.
+#   Radius 1 = 3x3 area (9 chunks)
+#   Radius 2 = 5x5 area (25 chunks) - recommended
+#   Radius 3 = 7x7 area (49 chunks)
 chunk-radius: 2
 
-# ─────────────────────────────────────────────
+# Default max NPCs per player when using permissions (use-config-access: false).
+# Players with permission 'loadnpc.spawn.multiple' can spawn up to this limit.
+# Note: You can also set custom limits per group/rank using permissions:
+#   loadnpc.max.<number> (e.g. loadnpc.max.5, loadnpc.max.10)
+#   loadnpc.max.* or loadnpc.admin for unlimited NPCs
+max-npcs-per-player: 3
+
+# ---------------------------------------------
+#  NPC Visuals
+# ---------------------------------------------
+
+# Configure the appearance of chunk-loading NPCs.
+# NPCs are styled and outfitted to look like real player characters.
+visuals:
+  # Apply the NPC owner's skin head to the NPC
+  use-owner-skin: true
+
+  # Whether the NPC should have an outline glow effect
+  glowing: false
+
+  # Item held in the NPC's main hand (e.g. CLOCK, COMPASS, RECOVERY_COMPASS, AIR)
+  held-item: "CLOCK"
+
+  # Hex colors for the leather clothing outfit
+  shirt-color: "#00A0B4"
+  pants-color: "#2B3B89"
+  boots-color: "#3C3C3C"
+
+# ---------------------------------------------
 #  Access Control
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 
 # Set to true to use config-based access control below instead of Bukkit permissions.
-# When false, standard permissions (loadnpc.spawn, loadnpc.kill, etc.) are used.
+# When false, standard permissions (loadnpc.spawn, loadnpc.max.<n>, etc.) are used.
 use-config-access: false
 
 # Default max NPCs for any player not listed in the 'players' section.
 # Only used when use-config-access is true.
-# Set to 0 to block unlisted players entirely.
+# Set to 0 to block unlisted players from spawning NPCs.
 default-max-npcs: 0
 
 # Per-player settings (only used when use-config-access is true).
-# Each entry defines what a player is allowed to do and how many NPCs they can spawn.
+# Entries can be player usernames OR player UUIDs.
 #
 # Options per player:
 #   max-npcs:          Maximum NPCs this player can spawn (required)
@@ -37,26 +69,30 @@ default-max-npcs: 0
 #       can-kill-others: true
 #       can-list-all: true
 #       can-reload: true
-#     Alex:
-#       max-npcs: 2
-#     Notch:
+#     "c06f8906-4c8a-4911-9c29-ea1db502f794":
 #       max-npcs: 10
-#       can-kill-others: true
-#       can-list-all: true
-#       can-reload: true
 players: {}
 
-# ─────────────────────────────────────────────
-#  Messages (supports & color codes)
-# ─────────────────────────────────────────────
+# ---------------------------------------------
+#  Messages
+# ---------------------------------------------
+# Supports standard Minecraft color codes (&a, &c, &e, etc.)
+# You can use %prefix% in any message to insert the prefix below.
+
 messages:
-  npc-spawned: "&aChunk-loading NPC &f#%id% &aspawned! &7(Time: %time%)"
-  npc-killed: "&cNPC &f#%id% &cremoved and chunks released."
-  not-looking-at-npc: "&eYou must be looking at a LoadNPC armor stand."
-  no-permission-kill-others: "&cYou cannot kill NPCs owned by other players."
-  max-npcs-reached: "&cYou have reached the maximum number of NPCs (%max%)."
-  no-permission: "&cYou do not have permission to do this."
-  not-allowed: "&cYou are not allowed to use LoadNPC. Contact an admin."
-  need-multiple-permission: "&cYou need the &floadnpc.spawn.multiple &cpermission to spawn more than one NPC."
-  invalid-duration: "&cInvalid time format. Use e.g. &f10m&c, &f1h&c, &f2h30m&c, &f90s"
-  config-reloaded: "&aLoadNPC configuration reloaded successfully."
+  prefix: "&8[&aLoadNPC&8] "
+  npc-spawned: "%prefix%&aChunk-loading NPC &f#%id% &aspawned! &7(Time: %time%)"
+  npc-killed: "%prefix%&cNPC &f#%id% &cremoved and chunks released."
+  not-looking-at-npc: "%prefix%&eYou must be looking at a LoadNPC."
+  no-permission-kill-others: "%prefix%&cYou cannot kill NPCs owned by other players."
+  max-npcs-reached: "%prefix%&cYou have reached the maximum number of NPCs (%max%)."
+  no-permission: "%prefix%&cYou do not have permission to do this."
+  not-allowed: "%prefix%&cYou are not allowed to use LoadNPC. Contact an admin."
+  need-multiple-permission: "%prefix%&cYou need permission to spawn more than one NPC."
+  invalid-duration: "%prefix%&cInvalid time format. Use e.g. &f10m&c, &f1h&c, &f2h30m&c, &f90s"
+  config-reloaded: "%prefix%&aConfiguration reloaded successfully."
+  teleported: "%prefix%&aTeleported to NPC &f#%id%&a."
+  npc-extended: "%prefix%&aNPC &f#%id% &aextended by &f%time%&a. &7(New time left: %left%)"
+  npc-is-permanent: "%prefix%&eNPC &f#%id% &eis permanent and cannot be extended."
+  cleared-npcs: "%prefix%&cRemoved &f%count% &cNPC(s)."
+  no-npc-found: "%prefix%&cNo NPC found with ID &f#%id%&c."

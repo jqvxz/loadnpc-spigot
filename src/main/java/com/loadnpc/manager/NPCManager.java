@@ -2,18 +2,22 @@ package com.loadnpc.manager;
 
 import com.loadnpc.LoadNPCPlugin;
 import com.loadnpc.model.NPCData;
-import org.bukkit.ChatColor;
-import org.bukkit.Chunk;
-import org.bukkit.Location;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
+import org.bukkit.inventory.EntityEquipment;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.LeatherArmorMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.EulerAngle;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -50,6 +54,10 @@ public class NPCManager {
         }
     }
 
+    public int getChunkRadius() {
+        return chunkRadius;
+    }
+
     public void startTickTask() {
         new BukkitRunnable() {
             @Override
@@ -61,24 +69,40 @@ public class NPCManager {
                         expired.add(data.entityUUID());
                         continue;
                     }
-                    updateNametag(data);
+                    if (data.isTimed()) {
+                        updateNametag(data);
+                    }
                 }
 
                 for (UUID uuid : expired) {
-                    plugin.getLogger().info("NPC #" + activeNPCs.get(uuid).id() + " expired, removing.");
+                    NPCData d = activeNPCs.get(uuid);
+                    if (d != null) {
+                        plugin.getLogger().info("NPC #" + d.id() + " expired, removing.");
+                    }
                     killNPC(uuid);
                 }
             }
         }.runTaskTimer(plugin, 20L, 20L);
     }
 
-    private void updateNametag(NPCData data) {
+    public void updateNametag(NPCData data) {
+        Entity entity = Bukkit.getEntity(data.entityUUID());
+        if (entity instanceof ArmorStand stand && stand.isValid()) {
+            String name = ChatColor.GREEN + "LoadNPC " + ChatColor.GRAY + "by "
+                    + ChatColor.WHITE + data.ownerName() + " "
+                    + ChatColor.YELLOW + data.formatTimeLeft();
+            stand.setCustomName(name);
+            return;
+        }
+
         Location loc = data.toLocation();
         if (loc == null || loc.getWorld() == null) return;
-        if (!loc.getWorld().isChunkLoaded(loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) return;
+        int chunkX = Location.locToBlock(loc.getX()) >> 4;
+        int chunkZ = Location.locToBlock(loc.getZ()) >> 4;
+        if (!loc.getWorld().isChunkLoaded(chunkX, chunkZ)) return;
 
-        for (Entity entity : loc.getChunk().getEntities()) {
-            if (entity.getUniqueId().equals(data.entityUUID()) && entity instanceof ArmorStand stand) {
+        for (Entity e : loc.getWorld().getChunkAt(chunkX, chunkZ).getEntities()) {
+            if (e.getUniqueId().equals(data.entityUUID()) && e instanceof ArmorStand stand) {
                 String name = ChatColor.GREEN + "LoadNPC " + ChatColor.GRAY + "by "
                         + ChatColor.WHITE + data.ownerName() + " "
                         + ChatColor.YELLOW + data.formatTimeLeft();
@@ -88,14 +112,79 @@ public class NPCManager {
         }
     }
 
-    public ArmorStand spawnNPC(UUID ownerUUID, String ownerName, Location location, long durationMs) {
-        long count = activeNPCs.values().stream()
-                .filter(d -> d.ownerUUID().equals(ownerUUID))
-                .count();
-        if (count >= maxNPCsPerPlayer) {
-            return null;
+    public void dressAsPlayer(ArmorStand as, UUID ownerUUID) {
+        as.setCustomNameVisible(true);
+        as.setGravity(false);
+        as.setInvulnerable(true);
+        as.setVisible(true);
+        as.setSmall(false);
+        as.setBasePlate(false);
+        as.setArms(true);
+        as.setCanPickupItems(false);
+        as.setPersistent(true);
+        as.setCollidable(false);
+        as.setSilent(true);
+
+        boolean glowing = plugin.getConfig().getBoolean("visuals.glowing", false);
+        as.setGlowing(glowing);
+
+        as.setRightArmPose(new EulerAngle(Math.toRadians(340), 0, Math.toRadians(5)));
+        as.setLeftArmPose(new EulerAngle(Math.toRadians(10), 0, Math.toRadians(350)));
+        as.setRightLegPose(new EulerAngle(Math.toRadians(5), 0, 0));
+        as.setLeftLegPose(new EulerAngle(Math.toRadians(355), 0, 0));
+        as.setHeadPose(new EulerAngle(0, 0, 0));
+
+        EntityEquipment eq = as.getEquipment();
+        if (eq == null) return;
+
+        boolean useOwnerSkin = plugin.getConfig().getBoolean("visuals.use-owner-skin", true);
+        if (useOwnerSkin) {
+            ItemStack skull = new ItemStack(Material.PLAYER_HEAD);
+            SkullMeta skullMeta = (SkullMeta) skull.getItemMeta();
+            if (skullMeta != null) {
+                skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer(ownerUUID));
+                skull.setItemMeta(skullMeta);
+            }
+            eq.setHelmet(skull);
         }
 
+        Color shirtColor = parseColor(plugin.getConfig().getString("visuals.shirt-color"), Color.fromRGB(0, 160, 180));
+        ItemStack chest = new ItemStack(Material.LEATHER_CHESTPLATE);
+        LeatherArmorMeta chestMeta = (LeatherArmorMeta) chest.getItemMeta();
+        if (chestMeta != null) {
+            chestMeta.setColor(shirtColor);
+            chest.setItemMeta(chestMeta);
+        }
+        eq.setChestplate(chest);
+
+        Color pantsColor = parseColor(plugin.getConfig().getString("visuals.pants-color"), Color.fromRGB(43, 59, 137));
+        ItemStack legs = new ItemStack(Material.LEATHER_LEGGINGS);
+        LeatherArmorMeta legsMeta = (LeatherArmorMeta) legs.getItemMeta();
+        if (legsMeta != null) {
+            legsMeta.setColor(pantsColor);
+            legs.setItemMeta(legsMeta);
+        }
+        eq.setLeggings(legs);
+
+        Color bootsColor = parseColor(plugin.getConfig().getString("visuals.boots-color"), Color.fromRGB(60, 60, 60));
+        ItemStack boots = new ItemStack(Material.LEATHER_BOOTS);
+        LeatherArmorMeta bootsMeta = (LeatherArmorMeta) boots.getItemMeta();
+        if (bootsMeta != null) {
+            bootsMeta.setColor(bootsColor);
+            boots.setItemMeta(bootsMeta);
+        }
+        eq.setBoots(boots);
+
+        String itemStr = plugin.getConfig().getString("visuals.held-item", "CLOCK");
+        Material heldMat = parseMaterial(itemStr, Material.CLOCK);
+        if (heldMat != Material.AIR) {
+            eq.setItemInMainHand(new ItemStack(heldMat));
+        } else {
+            eq.setItemInMainHand(null);
+        }
+    }
+
+    public ArmorStand spawnNPC(UUID ownerUUID, String ownerName, Location location, long durationMs) {
         int id = nextId++;
         long expiresAt = (durationMs > 0) ? System.currentTimeMillis() + durationMs : -1;
         String timeDisplay = (durationMs > 0) ? formatDuration(durationMs) : "\u221E";
@@ -106,18 +195,7 @@ public class NPCManager {
 
         ArmorStand stand = location.getWorld().spawn(location, ArmorStand.class, as -> {
             as.setCustomName(initialName);
-            as.setCustomNameVisible(true);
-            as.setGravity(false);
-            as.setInvulnerable(true);
-            as.setVisible(true);
-            as.setGlowing(true);
-            as.setSmall(false);
-            as.setBasePlate(true);
-            as.setArms(true);
-            as.setCanPickupItems(false);
-            as.setPersistent(true);
-            as.setCollidable(false);
-            as.setSilent(true);
+            dressAsPlayer(as, ownerUUID);
             as.addScoreboardTag(NPC_METADATA_KEY);
             as.addScoreboardTag("owner:" + ownerUUID);
             as.addScoreboardTag("npcid:" + id);
@@ -139,16 +217,26 @@ public class NPCManager {
 
         idToEntity.remove(data.id());
 
-        Location loc = data.toLocation();
-        if (loc != null && loc.getWorld() != null) {
-            for (Entity e : loc.getWorld().getEntities()) {
-                if (e.getUniqueId().equals(entityUUID)) {
-                    e.remove();
-                    break;
+        Entity entity = Bukkit.getEntity(entityUUID);
+        if (entity != null) {
+            entity.remove();
+        } else {
+            Location loc = data.toLocation();
+            if (loc != null && loc.getWorld() != null) {
+                int chunkX = Location.locToBlock(loc.getX()) >> 4;
+                int chunkZ = Location.locToBlock(loc.getZ()) >> 4;
+                if (loc.getWorld().isChunkLoaded(chunkX, chunkZ)) {
+                    for (Entity e : loc.getWorld().getChunkAt(chunkX, chunkZ).getEntities()) {
+                        if (e.getUniqueId().equals(entityUUID)) {
+                            e.remove();
+                            break;
+                        }
+                    }
                 }
             }
-            releaseChunkTickets(data);
         }
+
+        releaseChunkTickets(data);
         saveNPCs();
     }
 
@@ -158,6 +246,48 @@ public class NPCManager {
         NPCData data = activeNPCs.get(entityUUID);
         killNPC(entityUUID);
         return data;
+    }
+
+    public boolean extendNPCDuration(int id, long additionalMs) {
+        UUID entityUUID = idToEntity.get(id);
+        if (entityUUID == null) return false;
+        NPCData data = activeNPCs.get(entityUUID);
+        if (data == null || !data.isTimed()) return false;
+
+        long base = Math.max(System.currentTimeMillis(), data.expiresAt());
+        long newExpires = base + additionalMs;
+        NPCData updated = data.withExpiresAt(newExpires);
+
+        activeNPCs.put(entityUUID, updated);
+        updateNametag(updated);
+        saveNPCs();
+        return true;
+    }
+
+    public int clearPlayerNPCs(UUID ownerUUID) {
+        List<UUID> toKill = activeNPCs.values().stream()
+                .filter(d -> d.ownerUUID().equals(ownerUUID))
+                .map(NPCData::entityUUID)
+                .toList();
+
+        for (UUID uuid : toKill) {
+            killNPC(uuid);
+        }
+        return toKill.size();
+    }
+
+    public int clearAllNPCs() {
+        List<UUID> toKill = new ArrayList<>(activeNPCs.keySet());
+        for (UUID uuid : toKill) {
+            killNPC(uuid);
+        }
+        return toKill.size();
+    }
+
+    public List<NPCData> findNPCsByOwnerName(String name) {
+        return activeNPCs.values().stream()
+                .filter(d -> d.ownerName().equalsIgnoreCase(name))
+                .toList();
     }
 
     public boolean isLoadNPC(UUID entityUUID) {
@@ -233,8 +363,8 @@ public class NPCManager {
         if (loc == null || loc.getWorld() == null) return;
 
         World world = loc.getWorld();
-        int centerX = loc.getBlockX() >> 4;
-        int centerZ = loc.getBlockZ() >> 4;
+        int centerX = Location.locToBlock(loc.getX()) >> 4;
+        int centerZ = Location.locToBlock(loc.getZ()) >> 4;
 
         for (int dx = -chunkRadius; dx <= chunkRadius; dx++) {
             for (int dz = -chunkRadius; dz <= chunkRadius; dz++) {
@@ -248,8 +378,8 @@ public class NPCManager {
         if (loc == null || loc.getWorld() == null) return;
 
         World world = loc.getWorld();
-        int centerX = loc.getBlockX() >> 4;
-        int centerZ = loc.getBlockZ() >> 4;
+        int centerX = Location.locToBlock(loc.getX()) >> 4;
+        int centerZ = Location.locToBlock(loc.getZ()) >> 4;
 
         for (int dx = -chunkRadius; dx <= chunkRadius; dx++) {
             for (int dz = -chunkRadius; dz <= chunkRadius; dz++) {
@@ -265,7 +395,17 @@ public class NPCManager {
     }
 
     public void saveNPCs() {
-        File file = new File(plugin.getDataFolder(), DATA_FILE);
+        saveNPCs(true);
+    }
+
+    public void saveNPCs(boolean async) {
+        File dataFolder = plugin.getDataFolder();
+        if (!dataFolder.exists()) {
+            dataFolder.mkdirs();
+        }
+
+        File file = new File(dataFolder, DATA_FILE);
+        File tempFile = new File(dataFolder, DATA_FILE + ".tmp");
         YamlConfiguration yaml = new YamlConfiguration();
 
         yaml.set("next-id", nextId);
@@ -285,10 +425,27 @@ public class NPCManager {
             index++;
         }
 
-        try {
-            yaml.save(file);
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to save NPCs", e);
+        Runnable writeTask = () -> {
+            synchronized (this) {
+                try {
+                    yaml.save(tempFile);
+                    try {
+                        Files.move(tempFile.toPath(), file.toPath(),
+                                StandardCopyOption.REPLACE_EXISTING,
+                                StandardCopyOption.ATOMIC_MOVE);
+                    } catch (IOException e) {
+                        Files.move(tempFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    }
+                } catch (IOException e) {
+                    plugin.getLogger().log(Level.SEVERE, "Failed to save NPCs", e);
+                }
+            }
+        };
+
+        if (async && plugin.isEnabled()) {
+            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, writeTask);
+        } else {
+            writeTask.run();
         }
     }
 
@@ -317,11 +474,14 @@ public class NPCManager {
                 double z = yaml.getDouble(path + ".z");
                 long expiresAt = yaml.getLong(path + ".expires-at", -1);
 
+                int chunkX = Location.locToBlock(x) >> 4;
+                int chunkZ = Location.locToBlock(z) >> 4;
+
                 if (expiresAt > 0 && System.currentTimeMillis() >= expiresAt) {
                     plugin.getLogger().info("NPC #" + id + " expired while offline, cleaning up.");
                     World w = plugin.getServer().getWorld(worldName);
                     if (w != null) {
-                        Chunk chunk = w.getChunkAt((int) x >> 4, (int) z >> 4);
+                        Chunk chunk = w.getChunkAt(chunkX, chunkZ);
                         chunk.load();
                         for (Entity entity : chunk.getEntities()) {
                             if (entity.getUniqueId().equals(entityUUID)) {
@@ -341,12 +501,16 @@ public class NPCManager {
                 }
 
                 boolean found = false;
-                Chunk chunk = world.getChunkAt((int) x >> 4, (int) z >> 4);
+                Chunk chunk = world.getChunkAt(chunkX, chunkZ);
                 chunk.load();
 
                 for (Entity entity : chunk.getEntities()) {
-                    if (entity.getUniqueId().equals(entityUUID) && entity instanceof ArmorStand) {
+                    if (entity.getUniqueId().equals(entityUUID) && entity instanceof ArmorStand stand) {
                         found = true;
+                        if (stand.getEquipment() == null || stand.getEquipment().getHelmet() == null
+                                || stand.getEquipment().getHelmet().getType() != Material.PLAYER_HEAD) {
+                            dressAsPlayer(stand, ownerUUID);
+                        }
                         break;
                     }
                 }
@@ -370,8 +534,26 @@ public class NPCManager {
         }
 
         if (!toRemove.isEmpty()) {
-            saveNPCs();
+            saveNPCs(false);
         }
+    }
+
+    private Color parseColor(String hex, Color def) {
+        if (hex == null || hex.trim().isEmpty()) return def;
+        try {
+            String clean = hex.trim();
+            if (clean.startsWith("#")) clean = clean.substring(1);
+            int rgb = Integer.parseInt(clean, 16);
+            return Color.fromRGB(rgb);
+        } catch (Exception e) {
+            return def;
+        }
+    }
+
+    private Material parseMaterial(String name, Material def) {
+        if (name == null || name.trim().isEmpty()) return def;
+        Material mat = Material.matchMaterial(name.trim().toUpperCase(Locale.ROOT));
+        return mat != null ? mat : def;
     }
 
     private String formatDuration(long millis) {

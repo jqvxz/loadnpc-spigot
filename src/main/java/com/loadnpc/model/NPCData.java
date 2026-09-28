@@ -37,6 +37,10 @@ public record NPCData(
         return new Location(world, x, y, z);
     }
 
+    public NPCData withExpiresAt(long newExpiresAt) {
+        return new NPCData(id, entityUUID, ownerUUID, ownerName, worldName, x, y, z, newExpiresAt);
+    }
+
     public String formatTimeLeft() {
         if (!isTimed()) return "\u221E";
         long remaining = getRemainingMillis();

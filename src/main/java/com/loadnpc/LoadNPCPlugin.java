@@ -29,7 +29,7 @@ public final class LoadNPCPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         if (npcManager != null) {
-            npcManager.saveNPCs();
+            npcManager.saveNPCs(false);
             npcManager.releaseAllChunkTickets();
         }
         getLogger().info("LoadNPC disabled — all chunk tickets released.");

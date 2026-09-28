@@ -6,7 +6,7 @@
 
     <groupId>com.loadnpc</groupId>
     <artifactId>LoadNPC</artifactId>
-    <version>1.0.2</version>
+    <version>1.2.1</version>
     <packaging>jar</packaging>
 
     <name>LoadNPC</name>
